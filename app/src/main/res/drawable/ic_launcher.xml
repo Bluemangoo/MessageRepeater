@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <background>
+        <color android:color="#FFFFFF" />
+    </background>
+
+    <foreground>
+        <vector
+            android:width="108dp"
+            android:height="108dp"
+            android:viewportWidth="960"
+            android:viewportHeight="960">
+
+            <group
+                android:pivotX="480"
+                android:pivotY="480"
+                android:scaleX="0.55"
+                android:scaleY="0.55">
+
+                <path
+                    android:fillColor="#FFC107"
+                    android:pathData="M160,800L160,720L269,720Q218,676 189,614Q160,552 160,480Q160,368 228,282.5Q296,197 400,170L400,254Q330,279 285,340.5Q240,402 240,480Q240,534 261.5,579.5Q283,625 320,658L320,560L400,560L400,800L160,800ZM720,480Q720,429 699.5,384.5Q679,340 640,302L640,400L560,400L560,160L800,160L800,240L691,240Q750,293 774.5,353.5Q799,414 800,480L720,480Z"/>
+
+                <group
+                    android:translateX="560"
+                    android:translateY="560"
+                    android:scaleX="0.35"
+                    android:scaleY="0.35">
+                    <path
+                        android:fillColor="#FFC107"
+                        android:pathData="M80,880L80,160Q80,127 103.5,103.5Q127,80 160,80L800,80Q833,80 856.5,103.5Q880,127 880,160L880,640Q880,673 856.5,696.5Q833,720 800,720L240,720L80,880Z" />
+                </group>
+
+            </group>
+        </vector>
+    </foreground>
+
+</adaptive-icon>
