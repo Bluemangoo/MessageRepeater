@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -12,8 +13,15 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import net.bluemangoo.messagerepeater.AppUtils
@@ -29,6 +37,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private val ALIVE_CHANNEL_ID = "keep_alive_channel"
     private val ALIVE_NOTIFICATION_ID = 999
     private val db = AppDatabase.getDatabase(this).ruleDao()
+    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     companion object {
         private val _isRealConnected = MutableStateFlow(false)
@@ -63,9 +72,25 @@ class NotificationForwarderService : NotificationListenerService() {
                     0
                 }
             )
+            startHeartbeat()
             Log.d(TAG, "通知复读机已成功转为前台服务并开启守护！")
         } catch (e: Exception) {
             Log.e(TAG, "转为前台服务失败: ${e.message}")
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+    }
+
+    private fun startHeartbeat() {
+        serviceScope.launch {
+            while (isActive) {
+                delay(60 * 1000L)
+                val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                manager.notify(ALIVE_NOTIFICATION_ID, buildAliveNotification())
+            }
         }
     }
 
