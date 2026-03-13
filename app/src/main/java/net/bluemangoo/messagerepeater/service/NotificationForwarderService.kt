@@ -3,6 +3,8 @@ package net.bluemangoo.messagerepeater.service
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.service.notification.NotificationListenerService
@@ -10,9 +12,12 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import net.bluemangoo.messagerepeater.AppUtils
+import net.bluemangoo.messagerepeater.MainActivity
 import net.bluemangoo.messagerepeater.data.AppDatabase
 import net.bluemangoo.messagerepeater.data.AppDisplayInfo
 import net.bluemangoo.messagerepeater.data.RuleMessage
@@ -24,6 +29,23 @@ class NotificationForwarderService : NotificationListenerService() {
     private val ALIVE_CHANNEL_ID = "keep_alive_channel"
     private val ALIVE_NOTIFICATION_ID = 999
     private val db = AppDatabase.getDatabase(this).ruleDao()
+
+    companion object {
+        private val _isRealConnected = MutableStateFlow(false)
+        val isRealConnected = _isRealConnected.asStateFlow()
+    }
+
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        _isRealConnected.value = true
+        Log.d(TAG, "活体检测：服务已真正连接到系统通知总线！")
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        _isRealConnected.value = false
+        Log.e(TAG, "活体检测：服务被系统断开连接！")
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -64,15 +86,40 @@ class NotificationForwarderService : NotificationListenerService() {
         val extras = sbn.notification.extras
         val title = extras.getString("android.title")
         val text = extras.getCharSequence("android.text")?.toString()
+        val originalIntent = sbn.notification.contentIntent
+        val notificationId = sbn.key.hashCode()
 
         if (packageName == applicationContext.packageName) return
 
         if (rule.getValueWhen(RuleMessage(title, text))) {
-            sendRepeaterNotification(title, text, AppUtils.getAppInfo(packageName, this))
+            sendRepeaterNotification(
+                notificationId,
+                title,
+                text,
+                AppUtils.getAppInfo(packageName, this),
+                originalIntent
+            )
         }
     }
 
-    private fun sendRepeaterNotification(originalTitle: String?, originalText: String?, appInfo: AppDisplayInfo) {
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+        super.onNotificationRemoved(sbn)
+        if (sbn == null) return
+
+        if (sbn.packageName == applicationContext.packageName) return
+
+        val notificationId = sbn.key.hashCode()
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(notificationId)
+    }
+
+    private fun sendRepeaterNotification(
+        notificationId: Int,
+        originalTitle: String?,
+        originalText: String?,
+        appInfo: AppDisplayInfo,
+        contentIntent: PendingIntent?
+    ) {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
@@ -80,9 +127,12 @@ class NotificationForwarderService : NotificationListenerService() {
             .setContentTitle("${appInfo.appName}: $originalTitle")
             .setContentText(originalText)
             .setAutoCancel(true)
-            .build()
 
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+        if (contentIntent != null) {
+            notification.setContentIntent(contentIntent)
+        }
+
+        notificationManager.notify(notificationId, notification.build())
     }
 
     private fun createNotificationChannel() {
@@ -108,12 +158,23 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun buildAliveNotification(): Notification {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
         return NotificationCompat.Builder(this, ALIVE_CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .setContentTitle("复读机已启动")
             .setContentText("通知复读机服务已启动！")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
+            .setContentIntent(pendingIntent)
             .build()
     }
 
