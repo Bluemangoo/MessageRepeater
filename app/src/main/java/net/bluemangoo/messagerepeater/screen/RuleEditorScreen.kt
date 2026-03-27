@@ -46,10 +46,10 @@ fun RuleEditorScreen(
             try {
                 Json.decodeFromString<RuleNode>(savedConfig.ruleTreeJson)
             } catch (e: Exception) {
-                RuleNode.Group(LogicOp.AND, emptyList())
+                RuleNode.Group(LogicOp.OR, emptyList())
             }
         } else {
-            RuleNode.Group(LogicOp.AND, emptyList())
+            RuleNode.Group(LogicOp.OR, emptyList())
         }
     }
 
@@ -289,6 +289,7 @@ fun RuleNodeView(
                                 RuleType.STARTS_WITH -> "开头是"
                                 RuleType.ENDS_WITH -> "结尾是"
                                 RuleType.INCLUDES -> "包含"
+                                RuleType.EQUALS_TO -> "等于"
                                 RuleType.REGEX -> "正则匹配"
                             },
                             style = MaterialTheme.typography.bodySmall

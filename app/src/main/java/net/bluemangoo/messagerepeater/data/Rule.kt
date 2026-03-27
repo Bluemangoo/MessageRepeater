@@ -12,6 +12,7 @@ enum class RuleType {
     STARTS_WITH,
     ENDS_WITH,
     INCLUDES,
+    EQUALS_TO,
     REGEX
 }
 
@@ -54,6 +55,7 @@ sealed class RuleNode {
                 STARTS_WITH -> on.startsWith(keyword)
                 ENDS_WITH -> on.endsWith(keyword)
                 INCLUDES -> on.contains(keyword)
+                EQUALS_TO -> on == keyword
                 REGEX -> try {
                     Regex(this.keyword).containsMatchIn(keyword)
                 } catch (_: Exception) {

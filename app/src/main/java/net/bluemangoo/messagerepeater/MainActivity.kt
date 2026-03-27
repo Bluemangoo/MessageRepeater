@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
                                 runBlocking {
                                     coroutineScope {
                                         val emptyRuleJson =
-                                            Json.encodeToString<RuleNode>(RuleNode.Group(LogicOp.AND, emptyList()))
+                                            Json.encodeToString<RuleNode>(RuleNode.Group(LogicOp.OR, emptyList()))
                                         db.saveRule(
                                             AppRuleConfig(
                                                 selectedApp.packageName,
