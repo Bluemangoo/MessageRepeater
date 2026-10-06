@@ -8,7 +8,7 @@ plugins {
 configurations.all {
     resolutionStrategy.eachDependency {
         if (requested.group == "org.jetbrains.kotlin" && requested.name == "compose-group-mapping") {
-            useVersion("2.3.10")
+            useVersion("2.4.20")
         }
     }
 }
