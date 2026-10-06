@@ -31,6 +31,7 @@ import net.bluemangoo.messagerepeater.screen.AppListScreen
 import net.bluemangoo.messagerepeater.screen.AppSelectionScreen
 import net.bluemangoo.messagerepeater.screen.RuleEditorScreen
 import net.bluemangoo.messagerepeater.service.NotificationForwarderService
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,7 +116,7 @@ fun PermissionCheckScreen(context: Activity) {
 
     LaunchedEffect(isReallyRunning, hasPermission) {
         if (hasPermission && !isReallyRunning) {
-            delay(1500)
+            delay(1500.milliseconds)
             showZombieDialog = true
         } else {
             showZombieDialog = false

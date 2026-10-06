@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -13,16 +12,9 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import net.bluemangoo.messagerepeater.AppUtils
 import net.bluemangoo.messagerepeater.MainActivity
@@ -30,16 +22,18 @@ import net.bluemangoo.messagerepeater.data.AppDatabase
 import net.bluemangoo.messagerepeater.data.AppDisplayInfo
 import net.bluemangoo.messagerepeater.data.RuleMessage
 import net.bluemangoo.messagerepeater.data.RuleNode
+import kotlin.time.Duration.Companion.seconds
 
 class NotificationForwarderService : NotificationListenerService() {
-    private val CHANNEL_ID = "forwarder_channel"
-    private val TAG = "ForwarderService"
-    private val ALIVE_CHANNEL_ID = "keep_alive_channel"
-    private val ALIVE_NOTIFICATION_ID = 999
     private val db = AppDatabase.getDatabase(this).ruleDao()
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     companion object {
+        private const val CHANNEL_ID = "forwarder_channel"
+        private const val TAG = "ForwarderService"
+        private const val ALIVE_CHANNEL_ID = "keep_alive_channel"
+        private const val ALIVE_NOTIFICATION_ID = 999
+
         private val _isRealConnected = MutableStateFlow(false)
         val isRealConnected = _isRealConnected.asStateFlow()
     }
@@ -87,7 +81,7 @@ class NotificationForwarderService : NotificationListenerService() {
     private fun startHeartbeat() {
         serviceScope.launch {
             while (isActive) {
-                delay(60 * 1000L)
+                delay(60.seconds)
                 val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
                 manager.notify(ALIVE_NOTIFICATION_ID, buildAliveNotification())
             }
@@ -161,25 +155,23 @@ class NotificationForwarderService : NotificationListenerService() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
-            val repeaterChannel = NotificationChannel(
-                CHANNEL_ID,
-                "复读机通知",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply { description = "用于展示匹配规则后转发的通知" }
+        val repeaterChannel = NotificationChannel(
+            CHANNEL_ID,
+            "复读机通知",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply { description = "用于展示匹配规则后转发的通知" }
 
-            val keepAliveChannel = NotificationChannel(
-                ALIVE_CHANNEL_ID,
-                "后台保活服务",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "确保通知复读机在后台稳定运行" }
+        val keepAliveChannel = NotificationChannel(
+            ALIVE_CHANNEL_ID,
+            "后台保活服务",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply { description = "确保通知复读机在后台稳定运行" }
 
-            manager.createNotificationChannel(repeaterChannel)
-            manager.createNotificationChannel(keepAliveChannel)
+        manager.createNotificationChannel(repeaterChannel)
+        manager.createNotificationChannel(keepAliveChannel)
 
-        }
     }
 
     private fun buildAliveNotification(): Notification {

@@ -46,19 +46,19 @@ object AppUtils {
         val allRulesFlow = db.getAllRulesFlow()
         val appList = mutableListOf<AppDisplayInfo>()
 
-        for (pkg in allRulesFlow) {
+        for ((packageName, ruleTreeJson) in allRulesFlow) {
             try {
-                val appInfo = pm.getApplicationInfo(pkg.packageName, 0)
-                val rule = Json.decodeFromString<RuleNode>(pkg.ruleTreeJson)
+                val appInfo = pm.getApplicationInfo(packageName, 0)
+                val rule = Json.decodeFromString<RuleNode>(ruleTreeJson)
                 appList.add(
                     AppDisplayInfo(
-                        packageName = pkg.packageName,
+                        packageName = packageName,
                         appName = pm.getApplicationLabel(appInfo).toString(),
                         icon = pm.getApplicationIcon(appInfo),
                         ruleCount = rule.count()
                     )
                 )
-            } catch (e: PackageManager.NameNotFoundException) {
+            } catch (_: PackageManager.NameNotFoundException) {
             }
         }
         return appList

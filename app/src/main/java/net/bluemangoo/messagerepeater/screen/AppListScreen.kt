@@ -1,7 +1,6 @@
 package net.bluemangoo.messagerepeater.screen
 
 import android.content.Context
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -38,7 +37,7 @@ object AppList {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppListScreen(context: Context, onAppClicked: (packageName: String) -> Unit, onAddClicked: () -> Unit) {
     val scope = rememberCoroutineScope()

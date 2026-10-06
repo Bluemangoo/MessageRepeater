@@ -45,7 +45,7 @@ fun RuleEditorScreen(
         rootRule = if (savedConfig != null) {
             try {
                 Json.decodeFromString<RuleNode>(savedConfig.ruleTreeJson)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 RuleNode.Group(LogicOp.OR, emptyList())
             }
         } else {
