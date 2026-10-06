@@ -22,6 +22,8 @@ import net.bluemangoo.messagerepeater.data.AppDatabase
 import net.bluemangoo.messagerepeater.data.AppDisplayInfo
 import net.bluemangoo.messagerepeater.data.RuleMessage
 import net.bluemangoo.messagerepeater.data.RuleNode
+import net.bluemangoo.messagerepeater.util.text
+import net.bluemangoo.messagerepeater.util.title
 import kotlin.time.Duration.Companion.seconds
 
 class NotificationForwarderService : NotificationListenerService() {
@@ -93,6 +95,7 @@ class NotificationForwarderService : NotificationListenerService() {
         if (sbn == null) return
 
         val packageName = sbn.packageName
+        val notification = sbn.notification
 
         val rule = runBlocking {
             val config = db.getRuleByPackage(packageName) ?: return@runBlocking null
@@ -102,19 +105,16 @@ class NotificationForwarderService : NotificationListenerService() {
             return
         }
 
-        val extras = sbn.notification.extras
-        val title = extras.getString("android.title")
-        val text = extras.getCharSequence("android.text")?.toString()
-        val originalIntent = sbn.notification.contentIntent
+        val originalIntent = notification.contentIntent
         val notificationId = sbn.key.hashCode()
 
         if (packageName == applicationContext.packageName) return
 
-        if (rule.getValueWhen(RuleMessage(title, text))) {
+        if (rule.getValueWhen(RuleMessage(sbn.notification))) {
             sendRepeaterNotification(
                 notificationId,
-                title,
-                text,
+                notification.title,
+                notification.text,
                 AppUtils.getAppInfo(packageName, this),
                 originalIntent
             )

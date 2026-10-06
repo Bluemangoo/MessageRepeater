@@ -1,11 +1,19 @@
 package net.bluemangoo.messagerepeater.data
 
+import android.app.Notification
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import net.bluemangoo.messagerepeater.data.LogicOp.*
 import net.bluemangoo.messagerepeater.data.RuleType.*
+import net.bluemangoo.messagerepeater.util.NotificationPersistenceType
+import net.bluemangoo.messagerepeater.util.ongoing_type
+import net.bluemangoo.messagerepeater.util.text
+import net.bluemangoo.messagerepeater.util.title
 
-data class RuleMessage(val title: String?, val text: String?)
+data class RuleMessage(val notification: Notification) {
+    val title: String? = notification.title
+    val text: String? = notification.text
+}
 
 @Serializable
 enum class RuleType {
@@ -16,10 +24,21 @@ enum class RuleType {
     REGEX
 }
 
+sealed interface RuleValueType {
+    data object STRING : RuleValueType
+    data class ENUM(val values: List<RuleValueEnum>) : RuleValueType
+}
+
+interface RuleValueEnum {
+    val displayName: String
+    val name: String
+}
+
 @Serializable
-enum class RuleOn {
-    TITLE,
-    TEXT
+enum class RuleOn(val valueType: RuleValueType) {
+    TITLE(RuleValueType.STRING),
+    TEXT(RuleValueType.STRING),
+    PERSISTENCE_TYPE(RuleValueType.ENUM(NotificationPersistenceType.entries));
 }
 
 @Serializable
@@ -47,11 +66,9 @@ sealed class RuleNode {
             val on = when (ruleOn) {
                 RuleOn.TITLE -> message.title
                 RuleOn.TEXT -> message.text
+                RuleOn.PERSISTENCE_TYPE -> message.notification.ongoing_type.name
             }
-            if (on == null) {
-                return false
-            }
-            return when (ruleType) {
+            return on != null && when (ruleType) {
                 STARTS_WITH -> on.startsWith(keyword)
                 ENDS_WITH -> on.endsWith(keyword)
                 INCLUDES -> on.contains(keyword)

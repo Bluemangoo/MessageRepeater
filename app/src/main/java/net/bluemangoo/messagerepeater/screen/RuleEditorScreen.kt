@@ -25,6 +25,8 @@ import net.bluemangoo.messagerepeater.data.LogicOp
 import net.bluemangoo.messagerepeater.data.RuleNode
 import net.bluemangoo.messagerepeater.data.RuleOn
 import net.bluemangoo.messagerepeater.data.RuleType
+import net.bluemangoo.messagerepeater.data.RuleType.*
+import net.bluemangoo.messagerepeater.data.RuleValueType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -113,6 +115,7 @@ fun RuleEditorScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RuleNodeView(
     node: RuleNode,
@@ -202,7 +205,7 @@ fun RuleNodeView(
                                 Button(
                                     onClick = {
                                         val newChildren =
-                                            node.children + RuleNode.Condition(RuleType.INCLUDES, RuleOn.TEXT, "")
+                                            node.children + RuleNode.Condition(INCLUDES, RuleOn.TEXT, "")
                                         onNodeUpdate(node.copy(children = newChildren))
                                     },
                                     modifier = Modifier.weight(1f)
@@ -227,7 +230,7 @@ fun RuleNodeView(
                                 OutlinedButton(
                                     onClick = {
                                         val newNotNode =
-                                            RuleNode.Not(RuleNode.Condition(RuleType.INCLUDES, RuleOn.TEXT, ""))
+                                            RuleNode.Not(RuleNode.Condition(INCLUDES, RuleOn.TEXT, ""))
                                         val newChildren = node.children + newNotNode
                                         onNodeUpdate(node.copy(children = newChildren))
                                     },
@@ -254,46 +257,73 @@ fun RuleNodeView(
                 modifier = Modifier
                     .padding(vertical = 12.dp),
             ) {
+                var oldStringValue by remember { mutableStateOf(if (node.ruleOn.valueType is RuleValueType.STRING) node.keyword else "") }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+
                     FilledTonalButton(
                         onClick = {
-                            val newOn = if (node.ruleOn == RuleOn.TEXT) {
-                                RuleOn.TITLE
-                            } else {
-                                RuleOn.TEXT
+                            val types = RuleOn.entries.toTypedArray()
+                            val nextIndex = (types.indexOf(node.ruleOn) + 1) % types.size
+                            val newOn = types[nextIndex]
+                            when (newOn.valueType) {
+                                is RuleValueType.STRING -> onNodeUpdate(
+                                    node.copy(
+                                        ruleOn = newOn,
+                                        keyword = oldStringValue
+                                    )
+                                )
+
+                                is RuleValueType.ENUM -> onNodeUpdate(
+                                    node.copy(
+                                        ruleOn = newOn,
+                                        ruleType = EQUALS_TO,
+                                        keyword = newOn.valueType.values.firstOrNull()?.name ?: ""
+                                    )
+                                )
                             }
-                            onNodeUpdate(node.copy(ruleOn = newOn))
                         },
-                        modifier = Modifier.width(80.dp)
+                        modifier = Modifier.widthIn(min = 120.dp)
                     ) {
                         Text(
                             text = when (node.ruleOn) {
                                 RuleOn.TITLE -> "标题"
                                 RuleOn.TEXT -> "文本"
+                                RuleOn.PERSISTENCE_TYPE -> "生命周期"
                             },
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
-                    FilledTonalButton(
-                        onClick = {
-                            val types = RuleType.entries.toTypedArray()
-                            val nextIndex = (types.indexOf(node.ruleType) + 1) % types.size
-                            onNodeUpdate(node.copy(ruleType = types[nextIndex]))
-                        },
-                        modifier = Modifier.width(110.dp)
-                    ) {
-                        Text(
-                            text = when (node.ruleType) {
-                                RuleType.STARTS_WITH -> "开头是"
-                                RuleType.ENDS_WITH -> "结尾是"
-                                RuleType.INCLUDES -> "包含"
-                                RuleType.EQUALS_TO -> "等于"
-                                RuleType.REGEX -> "正则匹配"
+                    when (node.ruleOn.valueType) {
+                        is RuleValueType.STRING -> FilledTonalButton(
+                            onClick = {
+                                val types = RuleType.entries.toTypedArray()
+                                val nextIndex = (types.indexOf(node.ruleType) + 1) % types.size
+                                onNodeUpdate(node.copy(ruleType = types[nextIndex]))
                             },
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                            modifier = Modifier.widthIn(min = 120.dp)
+                        ) {
+                            Text(
+                                text = when (node.ruleType) {
+                                    STARTS_WITH -> "开头是"
+                                    ENDS_WITH -> "结尾是"
+                                    INCLUDES -> "包含"
+                                    EQUALS_TO -> "等于"
+                                    REGEX -> "正则匹配"
+                                },
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        is RuleValueType.ENUM -> {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "等于",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(4.dp))
@@ -308,17 +338,81 @@ fun RuleNodeView(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
-                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    OutlinedTextField(
-                        value = node.keyword,
-                        onValueChange = { newText ->
-                            onNodeUpdate(node.copy(keyword = newText))
-                        },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        placeholder = { Text("关键词...") }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+                when (node.ruleOn.valueType) {
+                    is RuleValueType.STRING -> Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        OutlinedTextField(
+                            value = node.keyword,
+                            onValueChange = { newText ->
+                                oldStringValue = newText
+                                onNodeUpdate(node.copy(keyword = newText))
+                            },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            placeholder = { Text("关键词...") }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+                    is RuleValueType.ENUM -> {
+                        val enumValues = node.ruleOn.valueType.values
+                        var selectedIndex by remember {
+                            mutableIntStateOf(enumValues.find { it.name == node.keyword }
+                                ?.let { enumValues.indexOf(it) } ?: 0)
+                        }
+
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            var expanded by remember { mutableStateOf(false) }
+
+                            val displayText = if (selectedIndex in enumValues.indices) {
+                                enumValues[selectedIndex].displayName
+                            } else {
+                                "选择值"
+                            }
+
+                            ExposedDropdownMenuBox(
+                                expanded = expanded,
+                                onExpandedChange = { expanded = it },
+                                modifier = Modifier.widthIn(min = 120.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = displayText,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier
+                                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                                        .widthIn(min = 120.dp),
+                                    trailingIcon = {
+                                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                                    },
+                                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                                )
+
+                                ExposedDropdownMenu(
+                                    expanded = expanded,
+                                    onDismissRequest = { expanded = false },
+                                    modifier = Modifier.widthIn(min = 120.dp)
+                                ) {
+                                    enumValues.forEachIndexed { index, value ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    text = value.displayName,
+                                                    style = MaterialTheme.typography.bodySmall
+                                                )
+                                            },
+                                            onClick = {
+                                                selectedIndex = index
+                                                onNodeUpdate(node.copy(keyword = value.name))
+                                                expanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
